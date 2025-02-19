@@ -1,0 +1,157 @@
+﻿@using System.Data
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navManager
+
+<style>
+    *.btn-primary {
+        color: #fff;
+        background-color: #00b477;
+        border-color: #1861ac;
+    }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+<RadzenLayout>
+    <RadzenHeader class="custom-header">
+        <div class="header-content">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel>
+                <div style="margin-left: 150px;">
+                    <img src="/images/logo.png" alt="logo" />
+                </div>
+            </RadzenLabel>
+            <RadzenProfileMenu Click="@ProfileMenu" class="custom-profile-menu">
+                <Template>
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="profile-container">
+                                <img class="profile-image" src="@getPhoto()" alt="avatar" Style="width: 50px; height: 50px; border-radius: 50%; margin-right: 10px" />  
+                                <span class="profile-name">@getName() </span>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <img class="profile-image" src="/images/user-profilePicture.jpg" alt="avatar" Style="width: 50px; height: 50px; border-radius: 50%; margin-right: 10px" />
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </Template>
+                <ChildContent>
+                    <AuthorizeView>
+                        <Authorized>
+                            <RadzenProfileMenuItem Text="Profile" Icon="face"/>
+                            <RadzenProfileMenuItem Text="Logout" Icon="logout"/>
+                        </Authorized>
+                        <NotAuthorized>
+                            <RadzenProfileMenuItem Text="Login" Icon="login"/>
+                            <RadzenProfileMenuItem Text="Sign Up" Icon="assignment"/>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </ChildContent>
+            </RadzenProfileMenu>
+        </div>
+    </RadzenHeader>
+    <RadzenSidebar Responsive="false" Style="width: 190px;">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false" IconSize="small">
+            <AuthorizeView>
+                <Authorized>
+                    <RadzenPanelMenuItem Text="Active Aucions" Icon="home" Click="@(() => NavigateTo("/"))"/>
+                    <RadzenPanelMenuItem Text="Recomended  Auctions" Icon="grade" Click="@(() => NavigateTo("/recommended"))"/>
+                    <RadzenPanelMenuItem Text="History" Icon="history" Click="@(() => NavigateTo("/history"))"/>
+                    <RadzenPanelMenuItem Text="Notifications" Icon="feedback" Click="@(() => NavigateTo("/notifications"))"/>
+                    <RadzenPanelMenuItem Text="Create an Auction" Icon="gavel" Click="@(() => NavigateTo("/create-auction"))"/>
+                    
+                    @if (currentUser.getTipoUtilizador() == configGerais.Avaliador)
+                    {
+                        <RadzenPanelMenuItem Text="Evaluate Auctions" Icon="assignment_turned_in" Click="@(() => NavigateTo("/EvaluateAuction"))"/>
+                    }
+                    
+                    @if (currentUser.getTipoUtilizador() == configGerais.Admin)
+                    {
+                        <RadzenPanelMenuItem Text="Promote User" Icon="badge" Click="@(() => NavigateTo("/promoteUser"))" />
+                        <RadzenPanelMenuItem Text="General Statistics" Icon="query_stats" Click="@(() => NavigateTo("/statistics"))"/>
+                        <RadzenPanelMenuItem Text="User Statistics" Icon="assignment_ind" Click="@(() => NavigateTo("/statisticsAdminUser"))"/>
+                    }
+                </Authorized>
+                <NotAuthorized>
+                    <RadzenPanelMenuItem Text="Overview" Icon="home" Click="@(() => NavigateTo("/"))"/>
+                    <RadzenPanelMenuItem Text="Login" Icon="login" class="login" Click="@(() => NavigateTo("/login"))"/>
+                    <RadzenPanelMenuItem Text="Sign Up" Icon="assignment" Click="@(() => NavigateTo("/create"))"/>
+                </NotAuthorized>
+            </AuthorizeView>
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+</RadzenLayout>
+<RadzenNotification />
+<RadzenDialog />
+
+
+<style>
+    .custom-header {
+        background-color: #001F3F !important; /* Cor do cabeçalho */
+        color: white;
+    }
+
+    .custom-profile-menu {
+        background-color: #001F3F !important; /* Mesma cor do cabeçalho */
+        color: white;
+    }
+
+    .custom-profile-menu .profile-container {
+        background-color: #001F3F !important; /* Mesma cor do cabeçalho */
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+    }
+</style>
+
+
+@code {
+    bool sidebarExpanded = true;
+    Utilizador? currentUser = CurrentUser.getCurrentUser();
+
+    string getEmail()
+    {
+        return currentUser != null ? currentUser.getEmail() : string.Empty;
+    }
+
+    string getName()
+    {
+        return currentUser != null ? currentUser.getNome() : string.Empty;
+    }
+
+    string getPhoto()
+    {   
+        return currentUser != null ? currentUser.getFotoPerfil() : string.Empty;
+    }
+
+    void NavigateTo(string url)
+    {
+        navManager.NavigateTo(url);
+    }
+    
+    public async void ProfileMenu(RadzenProfileMenuItem item)
+    {   
+        if(item.Text.Equals("Logout")){
+            var customAuthStateProvider = (auth.AuthStateProvider)authStateProvider;
+            await customAuthStateProvider.UpdateAuthenticationState(null);
+            navManager.NavigateTo("/", true);
+            CurrentUser.setCurrentUser(null);
+        }
+        else if(item.Text.Equals("Profile")){
+            navManager.NavigateTo("/profile", true);
+        }
+        else if(item.Text.Equals("Login")){
+            navManager.NavigateTo("/login", true);
+        } 
+        else if (item.Text.Equals("Sign Up"))
+        {
+            navManager.NavigateTo("/create");
+        }
+    }
+}

@@ -1,0 +1,462 @@
+@page "/create-auction"
+@using System.Text
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider authStateProvider
+@inject NotificationService NotificationService
+@inject HttpClient HttpClient
+@inject DialogService DialogService
+
+<style>
+    .custom-card {
+        background-color: #1e416c !important; /* Cor do cabeçalho */
+        color: white;
+    }
+    .custom-text {
+        color: #b4c2e8;
+    }
+    
+    .btn-submit {
+        color: #fff; !important;
+        background-color: #00b477 !important;
+        border-color: #1861ac;
+    }
+    
+</style>
+
+<PageTitle>Create an Auction</PageTitle>
+
+<RadzenSteps Change=@OnChange Style="--rz-steps-number-selected-background: #00b477; --rz-steps-title-selected-color: #00b477">
+    <Steps>
+        <RadzenStepsItem Text="Auction Information" Disabled = "@(currentStep > 199)">
+            <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H3" class="rz-my-6">1. Auction Informations</RadzenText>
+            <RadzenRow Gap="0" Class="rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10" Style="width: 100%; max-width: 400px; overflow: hidden; background: #1e416c;">
+                <RadzenColumn> 
+                    <div Class="rz-p-0 rz-p-md-12">
+                        <RadzenRow Gap="5px">
+                            <RadzenColumn>
+                                <RadzenTemplateForm TItem="leilaoAux" Data=@leilao>
+                                    <RadzenStack>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Auction Display Picture</b></RadzenText>
+                                        <RadzenFormField Variant=@variant>
+                                            <RadzenCard Style="max-width: 300px">
+                                                <RadzenUpload Auto="false" Change="args => UploadChangeLote(args)" @ref="uploadLote" Accept="image/*" Url=@($"upload/{"LotPictures"}/{loteUniqueID + "-LotPicture"}")></RadzenUpload>
+                                            </RadzenCard>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Auction Title</b></RadzenText>
+                                        <RadzenFormField Variant=@variant Style="width: 300px;">
+                                            <ChildContent>
+                                                <RadzenTextBox Name="Titulo" @bind-Value="@leilao.titulo" Style="width: 500px;"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Titulo" Text="Required Field."/>
+                                            </Helper>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text" ><b>Closing Date</b></RadzenText>
+                                        <RadzenFormField Variant=@variant Style="width: 300px;">
+                                            <ChildContent>
+                                                <RadzenDatePicker Style="color: #001F3F" Name="Data Final" @bind-Value="@leilao.dataFinal" ShowTime="true" ShowSeconds="true" HoursStep="1.5" MinutesStep="5" SecondsStep="10" DateFormat="MM/dd/yyyy HH:mm:ss"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Data Final" Text="Required Field."/>
+                                                <RadzenCustomValidator Component="Data Final" Validator="@(() => validaDataFinal(leilao.dataFinal))" Text="At least 4 hours from now." Popup=@leilao.dataVal/>
+                                            </Helper>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Category</b></RadzenText>
+                                        <RadzenFormField Variant="@variant" Style="width: 300px;">
+                                            <Start>
+                                                <RadzenIcon Icon="folder_open"/>
+                                            </Start>
+                                            <ChildContent>
+                                                <RadzenDropDown Name="Pay" Multiple="false" Placeholder="Select..." TValue="string" Data="getAllCategorias()" @bind-Value="@leilao.Categoria"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Pay" Text="Required Field."/>
+                                            </Helper>
+                                        </RadzenFormField>
+
+                                    </RadzenStack>
+                                </RadzenTemplateForm>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </div>
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenStack AlignItems="AlignItems.End">
+                <RadzenText TextAlign="TextAlign.Center" TextStyle="TextStyle.Caption" Text="Keep in mint that your auction can be up to 2 hours to be Evaluated."/>
+            </RadzenStack>
+            
+        </RadzenStepsItem>
+        <RadzenStepsItem Text="Auction Items" Disabled="@(leilao.titulo == "" || leilao.dataFinal <= DateTime.Now.AddHours(2) || leilao.Categoria == "" || currentStep > 199 || !verifyLotPicSent())">
+            <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H3" class="rz-my-6">2. Auction Items</RadzenText>
+            <RadzenRow Gap="0" Class="rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10" Style="width: 100%; max-width: 400px; overflow: hidden; background: #1e416c;">
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div Class="rz-p-0 rz-p-md-12">
+                        <RadzenRow Gap="5px">
+                            <RadzenColumn>
+                                <RadzenTemplateForm TItem="artigoAux" Data=@artigo Submit="@OnClick">
+                                    <RadzenStack>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Item Picture</b></RadzenText>
+
+                                        <RadzenFormField Variant=@variant Style="width: 300px;">
+                                            <RadzenCard>
+                                                <RadzenUpload Name="ItemPic" Auto="false" Change="args => UploadChange(args)" @ref="upload" Accept="image/*" Url=@($"upload/{"ItemPictures"}/{artigo.uniqueID + "-ItemPicture"}")></RadzenUpload>
+                                            </RadzenCard>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Item Name</b></RadzenText>
+
+                                        <RadzenFormField Variant=@variant Style="width: 300px;">
+                                            <ChildContent>
+                                                <RadzenTextBox Name="Designação" @bind-Value="@artigo.designacao" Style="width: 500px;"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Designação" Text="Required Field."/>
+                                            </Helper>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Item Characteristics</b></RadzenText>
+
+                                        <RadzenFormField Variant=@variant Style="width: 300px;">
+                                            <ChildContent>
+                                                <RadzenTextBox Name="Caracteristicas" @bind-Value="@artigo.caracteristicas" Style="width: 500px;"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Caracteristicas" Text="Required Field."/>
+                                            </Helper>
+                                        </RadzenFormField>
+                                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Item Description</b></RadzenText>
+
+                                        <RadzenFormField Variant=@variant Style="width: 300px; margin-bottom: 10px">
+                                            <ChildContent>
+                                                <RadzenTextBox Name="Descrição" @bind-Value="@artigo.descricao" Style="width: 500px;"/>
+                                            </ChildContent>
+                                            <Helper>
+                                                <RadzenRequiredValidator Component="Descrição" Text="Required Field."/>
+                                            </Helper>
+                                        </RadzenFormField>
+
+                                        <RadzenButton class="btn-submit" ButtonType="ButtonType.Submit" Text="Add New" Icon="add_circle_outline" ButtonStyle="ButtonStyle.Secondary" Style="width: 200px;"/>
+                                    </RadzenStack>
+                                </RadzenTemplateForm>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </div>
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenDataGrid ColumnWidth="200px" Data="@listaArtigos" TItem="artigoAux">
+                <Columns>
+                    <RadzenDataGridColumn TItem="artigoAux" Property="designacao" Title="Item Name" Width="140px" />
+                    <RadzenDataGridColumn TItem="artigoAux" Property="caracteristicas" Title="Item Characterists" />
+                    <RadzenDataGridColumn TItem="artigoAux" Property="descricao" Title="Item Description" />
+                    <RadzenDataGridColumn TItem="artigoAux" Context="artigo" Title="Item Photo" >
+                        <Template Context="artigo">
+                            <RadzenButton Icon="pageview" ButtonStyle="ButtonStyle.Light" Text="View Item Photo" Click="@(args => showItemPicture(artigo.picturePath))"/>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Remove" TItem="artigoAux" Width="65px">
+                        <Template Context="artigo">
+                            <RadzenButton Click="@(() => RemoverArtigo(@artigo.id))" Icon="delete" ButtonStyle="ButtonStyle.Danger" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenStepsItem>
+        <RadzenStepsItem Text="Auction Summary" Disabled="@(listaArtigos.Count() == 0 || currentStep > 199)" NextText="Create" >
+            <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H3" class="rz-my-6">Auction Summary</RadzenText>
+            <RadzenCard class="custom-card rz-shadow-0 rz-p-8" style="width: 500px; margin: auto; border-radius: 30px; margin-bottom: 40px;">
+                <RadzenText TextStyle="TextStyle.H6" TextAlign="TextAlign.Center" class="rz-color-on-primary-light"><strong>Auction Information</strong></RadzenText>
+                <RadzenRow RowGap="0">
+                    <RadzenColumn SizeSM="12">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Auction Display Picture</b></RadzenText>
+                        <RadzenStack AlignItems="AlignItems.Center" Style="margin-top: 10px">
+                            <RadzenImage Path="@imagPathLote" Style="max-width: 400px; max-height: 400px"/>
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Title</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@leilao.titulo</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Category</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@leilao.Categoria</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Closing Date</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@leilao.dataFinal.ToString()</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold custom-text"><b>Auctioneer</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@CurrentUser.getCurrentUser().getEmail()</b></RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenCard>
+            <RadzenDataGrid ColumnWidth="200px" Data="@listaArtigos" TItem="artigoAux">
+                <Columns>
+                    <RadzenDataGridColumn TItem="artigoAux" Property="designacao" Title="Item Name" Width="140px" />
+                    <RadzenDataGridColumn TItem="artigoAux" Property="caracteristicas" Title="Item Characteristics" />
+                    <RadzenDataGridColumn TItem="artigoAux" Property="descricao" Title="Item Description" />
+                    <RadzenDataGridColumn TItem="artigoAux" Context="artigo" Title="Item Photo" >
+                        <Template Context="artigo">
+                            <RadzenButton Icon="pageview" ButtonStyle="ButtonStyle.Light" Text="View Item Photo" Click="@(args => showItemPicture(artigo.picturePath))"/>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenStepsItem>
+        <RadzenStepsItem Text="Submitted" Disabled="@(currentStep < 99)">
+            <RadzenText TextStyle="TextStyle.H5" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #000;"><b>Auction Created with Success!</b></RadzenText>
+        </RadzenStepsItem>
+    </Steps>
+</RadzenSteps>
+
+
+@code {
+    Variant variant = Variant.Outlined;
+
+    ILeilumLN ln = new LeilumLNFacade();
+
+    int currentStep = 0;
+
+    class leilaoAux
+    {
+        public string? titulo { get; set; }
+        public DateTime dataFinal { get; set; }
+        public string Categoria { get; set; }
+
+        public bool dataVal { get; set; }
+
+        public leilaoAux()
+        {
+            this.titulo = "";
+            this.Categoria = "";
+        }
+    }
+
+    class artigoAux
+    {
+        public int id { get; set;}
+        public string? designacao { get; set; }
+        public string? caracteristicas { get; set; }
+        public string? descricao { get; set; }
+        public string? picturePath { get; set; }
+        public string? uniqueID { get; set; }
+
+        public artigoAux()
+        {
+            this.id = 0;
+            this.designacao = "";
+            this.caracteristicas = "";
+            this.descricao = "";
+            this.uniqueID = Guid.NewGuid().ToString();
+            Console.Write(uniqueID);
+            this.picturePath = "";
+        }
+        
+    }
+
+    string extension = "";
+    string imagPathLote = "";
+    string loteExtension = "";
+    string loteUniqueID = Guid.NewGuid().ToString();
+    bool lotepicSent = false;
+    
+    void UploadChange(UploadChangeEventArgs args)
+    {
+        if (args.Files.Count() > 0)
+        {
+            FileInfo _file = args.Files.Single();
+            if (_file.Size > (1024 * 1024 * 3)) // 3MB
+            {
+                upload.Error.InvokeAsync();
+                NotificationService.Notify(new NotificationMessage {Severity = NotificationSeverity.Error, Summary = "Invalid File Size.", Detail = "File Size must be less than 3MB."});
+            }
+            foreach (var file in args.Files)
+            {
+                extension = file.Name.Split(".")[1];
+            }
+        }
+    }
+    
+    void UploadChangeLote(UploadChangeEventArgs args)
+    {
+        if (args.Files.Count() > 0)
+        {
+            FileInfo _file = args.Files.Single();
+            if (_file.Size > (1024 * 1024 * 3)) // 3MB
+            {
+                upload.Error.InvokeAsync();
+                NotificationService.Notify(new NotificationMessage {Severity = NotificationSeverity.Error, Summary = "Invalid File Size.", Detail = "File Size must be less than 3MB."});
+            }
+            foreach (var file in args.Files)
+            {
+                loteExtension = file.Name.Split(".")[1];
+            }
+        }
+    }
+    
+    leilaoAux leilao = new leilaoAux();
+    RadzenUpload upload;
+    RadzenUpload uploadLote;
+    artigoAux artigo = new artigoAux();
+
+    IEnumerable<artigoAux> listaArtigos = new List<artigoAux>();
+
+    Utilizador user = CurrentUser.getCurrentUser();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+    
+    async Task showItemPicture(string picPath)
+    {
+        await DialogService.OpenAsync("Item Picture", ds => 
+                @<RadzenStack AlignItems="AlignItems.Center" Gap="2rm">
+                    <RadzenImage Path=@picPath AlternateText=@picPath Style="max-width: 500px"/>
+            </RadzenStack>, new DialogOptions() {CloseDialogOnOverlayClick = true, CloseDialogOnEsc = true, Style = "min-height:auto;min-width:auto;width:auto"}
+        );
+    }
+
+    private async void uploadLoteImg()
+    {
+        if (!uploadLote.HasValue)
+        {
+            NotificationService.Notify(new NotificationMessage {Severity = NotificationSeverity.Error, Summary = "Auction Picture Required.", Detail = "Please Upload a Item Picture to Proceed."});
+        }
+        else
+        {
+            imagPathLote = loteUniqueID + "." + loteExtension;
+            await uploadLote.Upload();
+            lotepicSent = true;
+            StateHasChanged();
+        }
+    }
+
+    private bool verifyLotPicSent()
+    {
+        if (lotepicSent)
+        {
+            return true;
+        }
+        else
+        {
+            uploadLoteImg();
+            return lotepicSent;
+        }
+    }
+
+    void OnChange(int index)
+    {
+        if (index == 0) {
+            currentStep = 0;
+        }
+        if (index == 1) {
+            currentStep = 25;
+        }
+        if (index == 2) {
+            currentStep = 99;
+            imagPathLote = "/LotPictures/" + loteUniqueID + "-LotPicture." + loteExtension;
+        }
+        if (index == 3) {
+            currentStep = 200;
+            criaLeilao();
+        }
+    }
+
+    bool validaDataFinal(DateTime data)
+    {
+        if (data != null)
+        {
+            DateTime dataAtual = DateTime.Now;
+            
+            if (data >= dataAtual.AddHours(4))
+            {
+                return true;
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage {Severity = NotificationSeverity.Warning, Summary = "Your auction can take up to 2 hours to be evaluated", Detail = "Select a Date at least 4 hours from now."});
+            }
+        }
+        return false;
+    }
+
+    public ICollection<string> getAllCategorias(){
+        ICollection<string> categorias = new List<string>();
+        List<Categoria> lista = this.ln.GetAllCategorias();
+
+        foreach (Categoria c in lista){
+            categorias.Add(c.getDesignacao());
+        }
+
+        return categorias;
+    }
+
+    private async void OnClick()
+    {
+        if (!upload.HasValue)
+        {
+            NotificationService.Notify(new NotificationMessage {Severity = NotificationSeverity.Error, Summary = "Image Picture Required.", Detail = "Please Upload a Item Picture to Proceed."});
+            return;
+        }
+        await upload.Upload();
+        artigo.picturePath = "/ItemPictures/" + artigo.uniqueID + "-ItemPicture." + extension;
+        extension = "";
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Artigo adicionado com sucesso!" });
+        adicionaListaArtigos();
+        artigo = new artigoAux();
+        StateHasChanged();
+    }
+
+    private async void adicionaListaArtigos(){
+        this.artigo.id = listaArtigos.Count() + 1;
+        listaArtigos = listaArtigos.Append<artigoAux>(artigo);
+    }
+
+    void RemoverArtigo(int id)
+    {
+        int i = 1;
+        artigoAux aux;
+        foreach (var artigo in listaArtigos)
+        {
+            if (artigo.id == id)
+            {
+                aux = artigo;
+                break;
+            }
+        }
+        
+        listaArtigos = listaArtigos.Where(artigo => artigo.id != id).ToList();
+
+        foreach (artigoAux a in listaArtigos) {
+            a.id = i;
+            i++;
+        }
+    }
+
+    private void criaLeilao() {
+        int idLote = this.ln.quantidadeLotes() + 1;
+
+        List<Artigo> lArtigos = new List<Artigo>();
+
+        // cria a lista de artigos do lote
+        foreach(artigoAux a in this.listaArtigos) {
+            int id = this.ln.quantidadeArtigos() + 1;
+            string designacao = a.designacao;
+            string caracteristicas = a.caracteristicas;
+            string descricao = a.descricao;
+            string picturePath = a.picturePath;
+            Artigo aux = new Artigo(id,designacao,caracteristicas,descricao,idLote, picturePath);
+            lArtigos.Add(aux);
+        }
+        imagPathLote = "/LotPictures/" + loteUniqueID + "-LotPicture." + loteExtension;
+
+        // cria o lote
+        Lote lote = new Lote(idLote,this.user,null,null,lArtigos,imagPathLote);
+
+        // cria o leilao
+        int idLeilao = this.ln.quantidadeLeiloes() + 1;
+        string titulo = this.leilao.titulo;
+        DateTime dataFinal = this.leilao.dataFinal;
+        double valorAbertura = 0;
+        double valorBase = 0;
+        double valorMinimo = 0;
+        double valorAtual = 0;
+        Categoria categoria = ln.GetCategoriaByDesignacao(this.leilao.Categoria);
+        Leilao leilao = new Leilao(idLeilao,titulo,dataFinal,valorAbertura,valorBase,valorMinimo,valorAtual,2,null,user,lote,categoria);
+
+        this.ln.adicionaLeilao(leilao);
+        this.ln.adicionaNotificacao(new Notificacao(user.getEmail(),"You Created the Auction with Title:" +leilao.getTitulo() + "(Auction #" + leilao.getNrLeilao() + ")", DateTime.Now));
+
+    }
+}

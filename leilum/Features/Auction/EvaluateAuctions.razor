@@ -1,0 +1,316 @@
+@page "/EvaluateAuction"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<PageTitle>Evaluate Auctions</PageTitle>
+
+<style>
+    h4 {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+    }
+    .custom-card {
+        background-color: #1e416c !important; /* Cor do cabeçalho */
+        color: white;
+    }
+    custom-text {
+            color: #b4c2e8;
+    }
+</style>
+
+<div class="container">
+    <RadzenCard Class="rz-my-12 rz-mx-auto" Style="max-width: 1000px">
+        @if (user != null)
+        {
+            <h4>Evaluate Auctions</h4>
+            @if (auctionList.Count() > 0)
+            {
+                <RadzenPanel AllowCollapse="true" Class="custom-card rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10" Style="max-width: 850px; color: #b4c2e8; margin-bottom: 20px;"><b>Pending Auctions to Evaluate</b>
+                    <RadzenDataGrid AllowFiltering="false" AllowPaging="true" PageSize="4"
+                                    AllowSorting="false" Data="@auctionList" TItem="Leilao" ColumnWidth="200px"
+                                    SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedAuction Style="margin-top: 15px">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="Leilao" Property="Titulo" Title="Auction Title">
+                                <Template Context="leilao">
+                                    @leilao.getTitulo()
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="Leilao" Property="Comitente" Title="Seller">
+                                <Template Context="leilao">
+                                    @leilao.getComitente().getEmail()
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="Leilao" Property="lote" Title="Number of Items">
+                                <Template Context="leilao">
+                                    @leilao.getLote().getArtigos().Count
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="Leilao" Property="dataFinal" Title="End Time">
+                                <Template Context="leilao">
+                                    @leilao.getDataFinal()
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenPanel>
+            }
+            else
+            {
+                <h5 style="text-align: center; margin-top: 20px">There isn't any pending auction to Evaluate at the moment.</h5>
+                <h6 style="text-align: center">Try again later.</h6>
+            }
+            @if (selectedAuction.Count > 0)
+            {
+                <h4><b>Auction Details</b></h4>
+                <RadzenCard class="rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10 custom-card" style="background-color: #1e416c; color: #ffffff; max-width: 500px; margin: auto; border-radius: 30px; margin-bottom: 40px;">
+                    <RadzenStack AlignItems="AlignItems.Center" Style="margin-top: 10px">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Auction Picture</b></RadzenText>
+                        
+                        <RadzenImage Path="@selectedAuction.Single().getLote().getImagPath()" Style="max-width: 400px; max-height: 400px"/>
+                    </RadzenStack>
+                    <RadzenRow RowGap="0" Gap="1rem">
+                        <RadzenColumn>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Title</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@selectedAuction.Single().getTitulo()</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Category</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@selectedAuction.Single().getCategoria().Designacao</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Final Date</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@selectedAuction.Single().getDataFinal().ToString()</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Seller</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@selectedAuction.Single().getComitente().getEmail()</b></RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0 rz-font-weight-bold" style="color: #b4c2e8;"><b>Base Value</b></RadzenText>
+                            <RadzenTemplateForm TItem="double" Data="@bvalue" Submit="@trySybmit">
+                                <RadzenFormField Variant=@Variant.Outlined Style="margin-bottom: 10px">
+                                    <ChildContent>
+                                        <RadzenNumeric Name="BaseValue" ShowUpDown="false" TItem="int" @bind-Value="@bvalue" @onchange="updateValues"/>
+                                    </ChildContent>
+                                    <Helper>
+                                        <RadzenRequiredValidator Component="BaseValue" Text="Required Field."/>
+                                        <RadzenCustomValidator Component="BaseValue" Validator="@(() => Validator(bvalue))" Text="Invalid Input." />
+                                        <RadzenCustomValidator Component="BaseValue" Validator="@(() => valueValidByRules(bvalue))" Text="Invalid value, please follow category rules."/>
+                                    </Helper>
+                                </RadzenFormField>                              
+                                <RadzenButton Text="Submit Auction" ButtonType="ButtonType.Submit" Style="width: 210px"/>
+                                <RadzenButton Text="Reject Auction" ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Danger" Style="width: 210px; margin-top: 10px" Click="confirmRejection"/>
+                            </RadzenTemplateForm>
+                        </RadzenColumn>
+                    </RadzenRow>
+                    
+                    
+                </RadzenCard>
+                <RadzenDataGrid AllowPaging="true" bind-PageSize="5" Data="@selectedAuction.Single().getLote().getArtigos()" TItem="Artigo">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Artigo" Property="Designcao" Title="Item">
+                            <Template Context="artigo">
+                                @artigo.getDesignacao()
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Artigo" Property="Caracteristicas" Title="Characteristics">
+                            <Template Context="artigo">
+                                @artigo.getCaracteristicas()
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Artigo" Property="Descricao" Title="Description">
+                            <Template Context="artigo">
+                                @artigo.getDescricao()
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="Artigo" Context="artigo" Title="Photo" >
+                            <Template Context="artigo">
+                                <RadzenButton Icon="pageview" ButtonStyle="ButtonStyle.Light" Text="View Item Photo" Click="@(args => showItemPicture(artigo.getImagPath()))"/>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+            else
+            {
+                @if (auctionList.Count() > 0)
+                {
+                    <h6>Please select a auction above to see more details.</h6>
+                }
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/AccessDenied");
+        }
+        
+    </RadzenCard>
+</div>
+
+@code
+{
+    ILeilumLN leilumLn = new LeilumLNFacade();
+    IEnumerable<Leilao> auctionList = new List<Leilao>();
+    Utilizador user;
+    Categoria categoria;
+    IList<Leilao> selectedAuction = new List<Leilao>();
+    int bvalue = 0;
+    int mvalue = 0;
+    int ovalue = 0;
+    
+    async Task showItemPicture(string picPath)
+    {
+        await DialogService.OpenAsync("Item Picture", ds => 
+                @<RadzenStack AlignItems="AlignItems.Center" Gap="2rm">
+                    <RadzenImage Path=@picPath AlternateText=@picPath Style="max-width: 500px"/>
+            </RadzenStack>, new DialogOptions() {CloseDialogOnOverlayClick = true, CloseDialogOnEsc = true, Style = "min-height:auto;min-width:auto;width:auto"}
+        );
+    }
+
+    private void updateValues()
+    {
+        mvalue = Convert.ToInt32(Math.Round(0.85 * bvalue));
+        ovalue = Convert.ToInt32(Math.Round(0.5 * bvalue));
+    }
+
+    string rejectionMotive = "";
+    
+    private async void confirmRejection()
+    {
+        await DialogService.OpenAsync("Reject Auction", ds =>
+                @<RadzenStack>
+                    <RadzenTemplateForm TItem="string" Data="@rejectionMotive" Submit="reject">
+                        <RadzenText Text="Please write the Motive for the Rejection: "/>
+                        <RadzenFormField>
+                            <ChildContent>
+                                <RadzenTextArea Style="width: 350px; height: 100px" Name="Motive" Placeholder="Enter motive here..." @bind-Value="@rejectionMotive" MaxLength="500"/>
+                            </ChildContent>
+                            <Helper>
+                                <RadzenRequiredValidator Component="Motive" Text="Motive Required." />
+                            </Helper>
+                        </RadzenFormField>
+                        <RadzenStack AlignItems="AlignItems.Center">
+                            <RadzenRow Style="margin-top: 20px" AlignItems="AlignItems.Center">
+                                <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Warning" Text="Reject" Style="max-width: 200px"/>
+                                <RadzenButton ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Danger" Text="Cancel" Click="() => DialogService.Close()" Style="max-width: 200px"/>
+            </RadzenRow>
+            </RadzenStack>
+            </RadzenTemplateForm>
+            </RadzenStack>, new DialogOptions() {CloseDialogOnOverlayClick = true, CloseDialogOnEsc = true, Style="max-width: 400px"}
+        );
+    }
+
+    private IEnumerable<Leilao> getPendingAuctions()
+    {
+        return leilumLn.getLeiloesPendentesPorCategoria(categoria.getIdCategoria(), user.getEmail());
+    }
+
+    private void reject()
+    {
+        Leilao leilao = this.auctionList.First();
+        this.leilumLn.adicionaNotificacao(new Notificacao(leilao.getComitente().getEmail(), 
+            "Your Auction Titled: " + leilao.getTitulo() + " (Auction #" + leilao.getNrLeilao() + ") was REJECTED." + Environment.NewLine + "Motive: " + rejectionMotive,
+            DateTime.Now));
+        rejectionMotive = "";
+        this.leilumLn.adicionaNotificacao(new Notificacao(user.getEmail(),"You rejected Auction titled: " + leilao.getTitulo() + " (Auction #" + leilao.getNrLeilao() + ") Motive: " + rejectionMotive, DateTime.Now));
+        bvalue = 0;
+        mvalue = 0;
+        ovalue = 0;
+        leilumLn.rejectAuction(leilao.getNrLeilao(),user.getEmail());
+        this.auctionList = getPendingAuctions();
+        this.selectedAuction.Clear();
+        DialogService.Close();
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Auction was Reject Sucessfully!"});
+        StateHasChanged();
+    }
+
+    private async void trySybmit()
+    {
+        updateValues();
+        await DialogService.OpenAsync("Pelase Confirm your Evaluation", ds => 
+                @<RadzenStack>
+                    <RadzenText><b>Base Value: </b> @bvalue €</RadzenText>
+                    <RadzenText><b>Minimum Value: </b> @mvalue €</RadzenText>
+                    <RadzenText><b>Opening Value: </b> @ovalue €</RadzenText>
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn>
+                            <RadzenButton Text="Confirm" ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Success" Click="@(() => submitEvaluation())"></RadzenButton>
+                        </RadzenColumn>
+                        <RadzenColumn>
+                            <RadzenButton Text="Cancel" ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Danger" Click="() => DialogService.Close()"></RadzenButton>
+            </RadzenColumn>
+            </RadzenRow>
+
+            </RadzenStack>, new DialogOptions() {CloseDialogOnOverlayClick = true, CloseDialogOnEsc = true, Style = "min-height:auto;min-width:auto;width:auto"}
+        );
+    }
+    
+    private void turnBack()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void submitEvaluation()
+    {
+        Leilao leilao = this.auctionList.First();
+        this.leilumLn.startAuction(leilao.getNrLeilao(),bvalue, mvalue, ovalue, this.user.getEmail());
+        this.leilumLn.adicionaNotificacao(new Notificacao(user.getEmail(),"You evaluated Auction titled: " + leilao.getTitulo() + " (Auction #" + leilao.getNrLeilao() + ") Base Value: " + bvalue, DateTime.Now));
+        leilumLn.adicionaNotificacao(new Notificacao(leilao.getComitente().getEmail(),"Your Auction Titled: " + leilao.getTitulo() + "(Auction #" + leilao.getNrLeilao() + ") was APPROVED.", DateTime.Now));
+        bvalue = 0;
+        mvalue = 0;
+        ovalue = 0;
+        this.auctionList = getPendingAuctions();
+        this.selectedAuction.Clear();
+        DialogService.Close();
+
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Auction Evaluated Sucessfully!", Detail = "Auction initiated!" });
+        StateHasChanged();
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        user = CurrentUser.getCurrentUser();
+        if (user != null)
+        {
+            if (user.getTipoUtilizador() == configGerais.Avaliador)
+            {
+                categoria = leilumLn.getCategoriaAvaliador(user.getEmail());
+                if (categoria != null)
+                {
+                    auctionList = getPendingAuctions();
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error: Couldn't find Category associated with your Account.", Duration = 4000 });
+                    Task.Delay(5000);
+                    turnBack();
+                }
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error: You need to be an Evaluator to evaluate Auctions.", Duration = 4000 });
+                Task.Delay(5000);
+                turnBack();
+            }
+        }
+    }
+    
+    private bool Validator(int value)
+    {
+        if (value < 0)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private bool valueValidByRules(int value)
+    {
+        double valorMinimo = this.selectedAuction.Single().getCategoria().getRegra().getValorMinimo();
+        double valorMax = this.selectedAuction.Single().getCategoria().getRegra().getValorMaximo();
+        if (value < valorMinimo || value > valorMax)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Invalid Value, please follow Category Rules!", Detail = "Miminum Value Allowed: " + valorMinimo + "; Maximum Value Allowed: " + valorMax});
+            return false;
+        }
+        return true;
+    }
+    
+}

@@ -1,0 +1,10 @@
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px; /* Adjust the padding as needed */
+}
+
+.header-content img {
+    max-height: 80px; /* Adjust the max-height as needed */
+}

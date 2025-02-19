@@ -1,0 +1,158 @@
+@page "/statistics"
+@using System.Globalization
+
+<PageTitle>Statistics</PageTitle>
+
+<div class="container">
+    <RadzenText TextStyle="TextStyle.H4" TextAlign="TextAlign.Center"><b>Auction Statistics</b></RadzenText>
+    <div class="row">
+        <div class="col-sm-12 col-lg-6 offset-lg-3 my-5">
+            <RadzenCard class="w-100 mb-4">
+                <RadzenCheckBox @bind-Value="@showDataLabels1" Name="dataLabels"></RadzenCheckBox>
+                <RadzenLabel Text="Show Data Labels" Component="dataLabels" Style="margin-left: 8px; vertical-align: middle;"/>
+            </RadzenCard>
+            <RadzenChart>
+                <RadzenPieSeries Data="@revenue1" Title="Revenue" CategoryProperty="Quarter" ValueProperty="Revenue">
+                    <RadzenSeriesDataLabels Visible="@showDataLabels1"/>
+                </RadzenPieSeries>
+            </RadzenChart>
+        </div>
+    </div>
+</div>
+
+<div Class="rz-p-0 rz-p-md-12">
+    <RadzenText TextStyle="TextStyle.H4" TextAlign="TextAlign.Center"><b>Total Received from Auctions</b></RadzenText>
+
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" Class="rz-p-4 rz-mb-6 rz-border-radius-1" Style="border: var(--rz-grid-cell-border);">
+        <RadzenCheckBox @bind-Value="@smooth" Name="smooth"></RadzenCheckBox>
+        <RadzenLabel Text="Smooth" Component="smooth" Class="rz-mr-6"/>
+        <RadzenCheckBox @bind-Value="@showDataLabels2" Name="dataLabels"></RadzenCheckBox>
+        <RadzenLabel Text="Show Data Labels" Component="dataLabels"/>
+    </RadzenStack>
+
+    <RadzenChart>
+        @foreach (var r in revenue2)
+        {
+            <RadzenStackedAreaSeries Smooth="@smooth" Data="@r" CategoryProperty="Ano" Title="@GetYearFromDateString(r[0].Ano)" ValueProperty="Revenue">
+                <RadzenSeriesDataLabels Visible="@showDataLabels2"/>
+            </RadzenStackedAreaSeries>
+        }
+        <RadzenCategoryAxis Padding="20" Formatter="@FormatAsMonth"/>
+        <RadzenValueAxis Formatter="@FormatAsUSD">
+            <RadzenGridLines Visible="true"/>
+            <RadzenAxisTitle Text="Amount Spent"/>
+        </RadzenValueAxis>
+    </RadzenChart>
+</div>
+
+@code {
+    class DataItem
+    {
+        public string Ano { get; set; }
+        public string Quarter { get; set; }
+        public int Revenue { get; set; }
+    }
+    bool showDataLabels1 = false;
+    bool showDataLabels2 = false;
+    bool smooth = false;
+    DataItem[] revenue1; // Leilões
+    List<DataItem[]> revenue2;
+
+    ILeilumLN ln = new LeilumLNFacade();
+    
+    string GetYearFromDateString(string dateString)
+    {
+        if (!string.IsNullOrEmpty(dateString) && dateString.Length >= 4)
+        {
+            return dateString.Substring(0, 4);
+        }
+
+        return string.Empty;
+    }
+    
+    string FormatAsUSD(object value)
+    {
+        return ((double)value).ToString("C0", CultureInfo.CreateSpecificCulture("pt-PT"));
+    }
+
+    string FormatAsMonth(object value)
+    {
+        if (value != null)
+        {
+            return Convert.ToDateTime(value).ToString("MMM");
+        }
+
+        return string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        IEnumerable<Leilao> terminados = this.ln.getLeiloesTerminados();
+        int l1 = this.ln.getLeiloesPendentes().Count();
+        int l2 = this.ln.getLeiloesEmCurso().Count();
+        int l3 = terminados.Count();
+        List<int> datas = this.ln.ObterAnosComLeiloes(terminados);
+        
+
+        revenue1 = new DataItem[] {
+            new DataItem
+            {
+                Ano = "",
+                Quarter = "Auctions Pending Evaluation",
+                Revenue = l1
+            },
+            new DataItem
+            {
+                Ano = "",
+                Quarter = "Active Auctions",
+                Revenue = l2
+            },
+            new DataItem
+            {
+                Ano = "",
+                Quarter = "Finished Auctions",
+                Revenue = l3
+            },
+        };
+
+        List<DataItem[]> magia(List<int> datas)
+        {
+            List<DataItem[]> lista = new List<DataItem[]>();
+
+            foreach (var data in datas)
+            {
+                DataItem[] l = new DataItem[12];
+                Dictionary<string, int> gastos = this.ln.CalcularGastosPorMes(data);
+
+                int i = 0;
+                foreach (var gasto in gastos)
+                {
+                    DataItem x = new DataItem { Ano = gasto.Key, Quarter = "", Revenue = gasto.Value};
+                    l[i++] = x;
+                }
+                lista.Add(l);
+            }
+            return lista;
+        }
+        revenue2 = magia(datas);
+        
+        static void ImprimirListaDeArrays(List<DataItem[]> listaDeArrays)
+        {
+            foreach (var array in listaDeArrays)
+            {
+                ImprimirArray(array);
+                Console.WriteLine();
+            }
+        }
+
+        static void ImprimirArray(DataItem[] array)
+        {
+            foreach (var item in array)
+            {
+                Console.WriteLine($"Ano: {item.Ano}, Quarter: {item.Quarter}, Revenue: {item.Revenue}");
+            }
+        }
+        
+        await base.OnInitializedAsync();
+    }
+}
