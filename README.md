@@ -21,8 +21,23 @@
 ## Estatísticas Utilizador
 ![Estatisticas](https://github.com/RafaGomes1/LI4/blob/main/images/paginaEstatisticasUtilizador.png?raw=true)
 
+## Criar Leilão - Passo 1
+![Passo1](https://github.com/RafaGomes1/LI4/blob/main/images/paginaCriarLeilao(Parte1).png?raw=true)
 
+## Criar Leilão - Passo 2
+![Passo2](https://github.com/RafaGomes1/LI4/blob/main/images/paginaCriarLeilao(Parte2).png?raw=true)
 
+## Criar Leilão - Passo 3
+![Passo3](https://github.com/RafaGomes1/LI4/blob/main/images/paginaCriarLeilao(Parte3).png?raw=true)
+
+## Criar Leilão - Passo 4
+![Passo4](https://github.com/RafaGomes1/LI4/blob/main/images/paginaCriarLeilao(Parte4).png?raw=true)
+
+## Validar Leilão
+![Validar](https://github.com/RafaGomes1/LI4/blob/main/images/paginaReverLeilao.png?raw=true)
+
+## Visualizar Leilão
+![Ver](https://github.com/RafaGomes1/LI4/blob/main/images/VisualizarLeilao.png?raw=true)
 
 ---
 
