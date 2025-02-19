@@ -1,5 +1,11 @@
 # Laboratórios de Informática IV
 
+## Menu Inical - Sem Sessão Iniciada
+![(Sem](https://github.com/RafaGomes1/LI4/blob/main/images/paginaInicial(SemSessaoIniciada).png?raw=true)
+
+
+---
+
 <h3 align="center">🚀 Colaboradores 🚀</h3>
 
 <div align="center">
