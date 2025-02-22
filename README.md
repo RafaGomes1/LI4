@@ -48,3 +48,7 @@
 | [Lucas Oliveira](https://github.com/LucasOli20) | [Maurício Pereira](https://github.com/mauriciopereira74) | [Mike Pinto](https://github.com/mrmikept) | [Rafael Gomes](https://github.com/RafaGomes1) |
 
 </div>
+
+---
+
+<h3 align="center"> 🎖️ Nota - 16 / 20 🎖️ </h3>
